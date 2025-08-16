@@ -26,14 +26,18 @@ class Stream
 		int end = 0;
 
 	public:
-		InputBuffer(int maxSampleCount, int channelCount) :
+		Stretcher<Implementation> &stretcher;
+		InputChunk inputChunk{};
+
+		InputBuffer(Stretcher<Implementation> &stretcher, int maxSampleCount, int channelCount) :
 			channelStride(maxSampleCount),
 			channelCount(channelCount),
-			buffer(channelStride * channelCount)
+			buffer(channelStride * channelCount),
+			stretcher(stretcher)
 		{
 		}
 
-		void append(InputChunk inputChunk, int inputSampleCount, const float *const *inputPointers)
+		void append(int inputSampleCount, const float *const *inputPointers)
 		{
 			int discard = 0;
 
@@ -77,7 +81,7 @@ class Stream
 			return end;
 		}
 
-		void analyseGrain(Stretcher<Implementation> &stretcher, InputChunk inputChunk) const
+		void analyseGrain() const
 		{
 			const int muteHead = begin - inputChunk.begin;
 			const int muteTail = inputChunk.end - end;
@@ -86,13 +90,11 @@ class Stream
 		}
 	};
 
-	Stretcher<Implementation> &stretcher;
 	const int channelCount;
 
 	InputBuffer inputBuffer;
 
 	Request request{};
-	InputChunk inputChunk{};
 
 	OutputChunk outputChunk{};
 	int outputChunkConsumed = 0;
@@ -101,9 +103,8 @@ class Stream
 
 public:
 	Stream(Stretcher<Implementation> &stretcher, int maxInputSampleCount, int channelCount) :
-		stretcher(stretcher),
 		channelCount(channelCount),
-		inputBuffer(stretcher.maxInputFrameCount() + maxInputSampleCount, channelCount)
+		inputBuffer(stretcher, stretcher.maxInputFrameCount() + maxInputSampleCount, channelCount)
 	{
 		request.position = std::numeric_limits<double>::quiet_NaN();
 	}
@@ -117,7 +118,7 @@ public:
 		double outputSampleCount, // Number of audio output samples requred: this may be fractional. This, together with stretcher sample rate settings, controls playback speed.
 		double pitch = 1.) // Audio pitch shift (see Request::pitch)
 	{
-		inputBuffer.append(inputChunk, inputSampleCount, inputPointers);
+		inputBuffer.append(inputSampleCount, inputPointers);
 
 		request.speed = inputSampleCount / outputSampleCount;
 		request.pitch = pitch;
@@ -131,16 +132,16 @@ public:
 			{
 				if (!std::isnan(request.position))
 				{
-					inputBuffer.analyseGrain(stretcher, inputChunk);
-					stretcher.synthesiseGrain(outputChunk);
+					inputBuffer.analyseGrain();
+					inputBuffer.stretcher.synthesiseGrain(outputChunk);
 					outputChunkConsumed = 0;
 				}
 
 				double proportionRemaining = 1. - sampleCounter / std::round(outputSampleCount);
-				const auto position = inputBuffer.endPosition() - stretcher.maxInputFrameCount() / 2 - proportionRemaining * inputSampleCount;
+				const auto position = inputBuffer.endPosition() - inputBuffer.stretcher.maxInputFrameCount() / 2 - proportionRemaining * inputSampleCount;
 				request.reset = !(position > request.position);
 				request.position = position;
-				inputChunk = stretcher.specifyGrain(request);
+				inputBuffer.inputChunk = inputBuffer.stretcher.specifyGrain(request);
 			}
 
 			if (outputChunk.request[0] && !std::isnan(outputChunk.request[0]->position))
