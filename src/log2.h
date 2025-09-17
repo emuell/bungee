@@ -7,6 +7,22 @@
 
 #include <type_traits>
 
+#if defined(_MSC_VER)
+	#include <intrin.h>
+
+	static inline int __builtin_clz(unsigned int x)
+	{
+		unsigned long index;
+		return _BitScanReverse(&index, x) ? 31 - index : 32;
+	}
+
+	static inline int __builtin_ctz(unsigned int x)
+	{
+		unsigned long index;
+		return _BitScanForward(&index, x) ? index : 32;
+	}
+#endif
+
 namespace Bungee {
 
 template <bool floor = false>
