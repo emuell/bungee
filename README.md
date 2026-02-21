@@ -1,3 +1,5 @@
+Archived. This fork is no longer needed, after MSVC build errors got fixed upstream, and is only used by older versions of https://github.com/emuell/bungee-rs
+
 # Bungee: Audio time and pitch library
 
 Bungee is a real-time library for stretching audio. It can:
