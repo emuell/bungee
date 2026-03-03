@@ -1,4 +1,7 @@
-Archived. This fork is no longer needed, after MSVC build errors got fixed upstream, and is only used by older versions of https://github.com/emuell/bungee-rs
+### Deprecated 
+
+> [!NOTE]
+> See https://github.com/emuell/bungee-rs
 
 # Bungee: Audio time and pitch library
 
